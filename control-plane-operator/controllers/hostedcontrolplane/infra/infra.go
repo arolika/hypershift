@@ -26,6 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -172,6 +173,11 @@ func (r *Reconciler) ReconcileInfrastructureStatus(ctx context.Context, hcp *hyp
 func (r *Reconciler) AdmitHCPManagedRoutes(ctx context.Context, hcp *hyperv1.HostedControlPlane, privateRouterHost, externalRouterHost string) error {
 	routeList := &routev1.RouteList{}
 	if err := r.Client.List(ctx, routeList, client.InNamespace(hcp.Namespace)); err != nil {
+		// If Route API is not available (e.g., on vanilla Kubernetes like IKS Classic),
+		// skip route admission as there are no routes to admit
+		if meta.IsNoMatchError(err) {
+			return nil
+		}
 		return fmt.Errorf("failed to list routes: %w", err)
 	}
 

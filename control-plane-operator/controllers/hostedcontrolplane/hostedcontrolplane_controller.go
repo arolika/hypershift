@@ -1977,6 +1977,11 @@ func (r *HostedControlPlaneReconciler) reconcileCoreIgnitionConfig(ctx context.C
 func (r *HostedControlPlaneReconciler) removeHCPIngressFromRoutes(ctx context.Context, hcp *hyperv1.HostedControlPlane) error {
 	routeList := &routev1.RouteList{}
 	if err := r.List(ctx, routeList, client.InNamespace(hcp.Namespace)); err != nil {
+		// If Route API is not available (e.g., on vanilla Kubernetes like IKS Classic),
+		// skip this cleanup operation as there are no routes to clean up
+		if meta.IsNoMatchError(err) {
+			return nil
+		}
 		return fmt.Errorf("failed to list routes: %w", err)
 	}
 

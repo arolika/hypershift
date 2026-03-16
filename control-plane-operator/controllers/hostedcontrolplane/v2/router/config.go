@@ -17,6 +17,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -41,6 +42,11 @@ func init() {
 func adaptConfig(cpContext component.WorkloadContext, cm *corev1.ConfigMap) error {
 	routeList := &routev1.RouteList{}
 	if err := cpContext.Client.List(cpContext, routeList, client.InNamespace(cpContext.HCP.Namespace)); err != nil {
+		// If Route API is not available (e.g., on vanilla Kubernetes like IKS Classic),
+		// skip router config adaptation as there are no routes to configure
+		if meta.IsNoMatchError(err) {
+			return nil
+		}
 		return fmt.Errorf("failed to list routes: %w", err)
 	}
 
